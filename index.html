@@ -450,7 +450,6 @@ function executeMultiMove(tWh, targetNo, anchorWh = null, anchorNo = null) {
     const targetWhDef = whDefs.find(w => w.name === tWh);
     if (!targetWhDef) return;
 
-    // ボタンから移動した場合など、基準点(掴んだパレット)が無い場合は一番若い番号を基準にする
     if (!anchorWh || !anchorNo) {
         selectedPallets.sort((a, b) => { if (a.wh === b.wh) return a.no - b.no; return a.wh.localeCompare(b.wh); });
         anchorWh = selectedPallets[0].wh; anchorNo = selectedPallets[0].no;
@@ -459,48 +458,42 @@ function executeMultiMove(tWh, targetNo, anchorWh = null, anchorNo = null) {
     const anchorWhDef = whDefs.find(w => w.name === anchorWh);
     if (!anchorWhDef) return;
 
-    // 基準点（掴んだパレット）のX,Y座標を計算
     const anchorX = (anchorNo - 1) % anchorWhDef.w;
     const anchorY = Math.floor((anchorNo - 1) / anchorWhDef.w);
     
-    // 落とした先（ターゲット）のX,Y座標を計算
     const targetX = (targetNo - 1) % targetWhDef.w;
     const targetY = Math.floor((targetNo - 1) / targetWhDef.w);
 
-    let moves = []; // 移動予定リスト
+    let moves = []; 
 
-    // 選択されたすべてのパレットについて、移動先の新しい位置を計算
     for (let src of selectedPallets) {
         const srcWhDef = whDefs.find(w => w.name === src.wh);
         if (!srcWhDef) return;
 
-        // 元の位置のX,Y座標
         const srcX = (src.no - 1) % srcWhDef.w;
         const srcY = Math.floor((src.no - 1) / srcWhDef.w);
 
-        // 基準点からのズレ（距離）を計算して、移動先の座標を出す
         const newX = targetX + (srcX - anchorX);
         const newY = targetY + (srcY - anchorY);
         const newNo = newY * targetWhDef.w + newX + 1;
 
-        // エラーチェック①：倉庫の壁（枠）をはみ出していないか？
+        // ▼ 変更箇所：カスタムアラートに変更
         if (newX < 0 || newX >= targetWhDef.w || newY < 0 || newY >= targetWhDef.d) {
-            alert("移動先のエリア（枠）をはみ出してしまいます。\n位置を調整してください。");
-            return; // はみ出す場合は移動を中止
+            showCustomAlert("移動先のエリア（枠）をはみ出してしまいます。<br>位置を調整してください。");
+            return; 
         }
 
-        // エラーチェック②：移動先に別のパレット（選択していないパレット）が既に存在しないか？
+        // ▼ 変更箇所：カスタムアラートに変更
         const hasData = stockDetails.some(d => d.wh === tWh && d.no === newNo);
         const isSelected = selectedPallets.some(m => m.wh === tWh && m.no === newNo);
         if (hasData && !isSelected) {
-            alert("移動先に既に別のパレットが存在します。\n位置を調整するか、移動先を空けてください。");
-            return; // ぶつかる場合は移動を中止
+            showCustomAlert("移動先に既に別のパレットが存在します。<br>位置を調整するか、移動先を空けてください。");
+            return; 
         }
 
         moves.push({ src: src, destNo: newNo });
     }
 
-    // 全てクリア（安全確認）できたら、一斉にデータを書き換える
     moves.forEach(move => {
         const dataIdx = stockDetails.findIndex(x => x.wh === move.src.wh && x.no === move.src.no);
         if (dataIdx > -1) {
@@ -511,7 +504,9 @@ function executeMultiMove(tWh, targetNo, anchorWh = null, anchorNo = null) {
 
     localStorage.setItem('wh_v15_data', JSON.stringify(stockDetails));
     cancelMultiMove(); currentWh = tWh; forceSingleArea = true; renderMap();
-}    function toggleFullScreen() {
+}    
+
+function toggleFullScreen() {
         if (!document.fullscreenElement) {
             if (document.documentElement.requestFullscreen) {
                 document.documentElement.requestFullscreen().then(() => {
@@ -542,6 +537,66 @@ function executeMultiMove(tWh, targetNo, anchorWh = null, anchorNo = null) {
             btn.innerText = "全画面表示";
         }
     });
+
+    // ▼全画面が解除されないカスタム警告ダイアログ
+function showCustomAlert(message) {
+    // 既にダイアログがあれば消す
+    const existing = document.getElementById('customAlertOverlay');
+    if (existing) existing.remove();
+
+    // 背景の暗い部分（オーバーレイ）
+    const overlay = document.createElement('div');
+    overlay.id = 'customAlertOverlay';
+    overlay.style.position = 'fixed';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.width = '100vw';
+    overlay.style.height = '100vh';
+    overlay.style.backgroundColor = 'rgba(0,0,0,0.5)';
+    overlay.style.display = 'flex';
+    overlay.style.justifyContent = 'center';
+    overlay.style.alignItems = 'center';
+    overlay.style.zIndex = '10000'; // 一番手前に表示
+
+    // 白いダイアログ本体
+    const modal = document.createElement('div');
+    modal.style.backgroundColor = '#bc60c3';
+    modal.style.padding = '20px';
+    modal.style.borderRadius = '8px';
+    modal.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+    modal.style.textAlign = 'center';
+    modal.style.maxWidth = '80%';
+
+    // メッセージテキスト
+    const text = document.createElement('p');
+    text.innerHTML = message; // <br>で改行できるようにinnerHTMLを使用
+    text.style.margin = '0 0 20px 0';
+    text.style.lineHeight = '1.5';
+    text.style.color = 'white';
+    text.style.fontWeight = 'bold';
+
+    // OKボタン
+    const btn = document.createElement('button');
+    btn.innerText = 'OK';
+    btn.style.padding = '10px 30px';
+    btn.style.backgroundColor = 'white'; // 警告っぽいオレンジ色'#e67e22'
+    btn.style.color = '#e67e22';
+    btn.style.fontWeight = 'bold';
+    btn.style.border = 'none';
+    btn.style.borderRadius = '4px';
+    btn.style.fontSize = '16px';
+    btn.style.cursor = 'pointer';
+
+    // ボタンを押したら閉じる
+    btn.onclick = () => {
+        overlay.remove();
+    };
+
+    modal.appendChild(text);
+    modal.appendChild(btn);
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+}
 
     function initHistoryState() {
         window.history.replaceState({ page: 'system' }, '');
@@ -1077,31 +1132,76 @@ function executeMultiMove(tWh, targetNo, anchorWh = null, anchorNo = null) {
     }
 
     function moveCustomDrag(e) {
-        const touch = e.touches[0];
-        updateClonePosition(touch.clientX, touch.clientY);
-        
-        document.querySelectorAll('.pallet').forEach(p => p.classList.remove('drag-over'));
-        
-        // グループまたは単体クローンを一時的に隠して、下のパレットを取得
-        if (cloneGroupContainer) {
-            cloneGroupContainer.style.display = 'none';
-        } else if (cloneEl) {
-            cloneEl.style.display = 'none';
-        }
-        
-        const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
-        
-        if (cloneGroupContainer) {
-            cloneGroupContainer.style.display = 'block';
-        } else if (cloneEl) {
-            cloneEl.style.display = 'block';
-        }
-        
-        if (elemBelow) {
-            const dropTarget = elemBelow.closest('.pallet');
-            if (dropTarget) dropTarget.classList.add('drag-over');
+    const touch = e.touches[0];
+    updateClonePosition(touch.clientX, touch.clientY);
+    
+    document.querySelectorAll('.pallet').forEach(p => p.classList.remove('drag-over'));
+    
+    // グループまたは単体クローンを一時的に隠して、下のパレットを取得
+    if (cloneGroupContainer) {
+        cloneGroupContainer.style.display = 'none';
+    } else if (cloneEl) {
+        cloneEl.style.display = 'none';
+    }
+    
+    const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+    
+    if (cloneGroupContainer) {
+        cloneGroupContainer.style.display = 'block';
+    } else if (cloneEl) {
+        cloneEl.style.display = 'block';
+    }
+    
+    if (elemBelow) {
+        const dropTarget = elemBelow.closest('.pallet');
+        if (dropTarget) {
+            // ▼ここから追加：複数選択時のハイライト計算▼
+            if (typeof isMultiSelectMode !== 'undefined' && isMultiSelectMode && selectedPallets.length > 0) {
+                const dWh = dropTarget.getAttribute('data-wh');
+                const dNo = parseInt(dropTarget.getAttribute('data-no'));
+                
+                // 掴んでいるパレットが、選択中のグループに含まれているか確認
+                const isDraggingSelected = selectedPallets.some(p => p.wh === draggedAnchorWh && p.no == draggedAnchorNo);
+                
+                if (isDraggingSelected) {
+                    const targetWhDef = whDefs.find(w => w.name === dWh);
+                    const anchorWhDef = whDefs.find(w => w.name === draggedAnchorWh);
+                    
+                    if (targetWhDef && anchorWhDef) {
+                        const anchorX = (draggedAnchorNo - 1) % anchorWhDef.w;
+                        const anchorY = Math.floor((draggedAnchorNo - 1) / anchorWhDef.w);
+                        const targetX = (dNo - 1) % targetWhDef.w;
+                        const targetY = Math.floor((dNo - 1) / targetWhDef.w);
+                        
+                        selectedPallets.forEach(src => {
+                            const srcWhDef = whDefs.find(w => w.name === src.wh);
+                            if (!srcWhDef) return;
+                            
+                            const srcX = (src.no - 1) % srcWhDef.w;
+                            const srcY = Math.floor((src.no - 1) / srcWhDef.w);
+                            
+                            const newX = targetX + (srcX - anchorX);
+                            const newY = targetY + (srcY - anchorY);
+                            
+                            if (newX >= 0 && newX < targetWhDef.w && newY >= 0 && newY < targetWhDef.d) {
+                                const newNo = newY * targetWhDef.w + newX + 1;
+                                const highlightTarget = document.querySelector(`.pallet[data-wh="${dWh}"][data-no="${newNo}"]`);
+                                if (highlightTarget) {
+                                    highlightTarget.classList.add('drag-over');
+                                }
+                            }
+                        });
+                        return; // 複数ハイライトの処理が終わったらここで終了
+                    }
+                }
+            }
+            // ▲ここまで追加▲
+
+            // 複数選択ではない（単体移動）の場合、または上記条件に当てはまらない場合は単体のハイライト
+            dropTarget.classList.add('drag-over');
         }
     }
+}
 
     function updateClonePosition(x, y) {
         if (cloneGroupContainer) {
@@ -1114,51 +1214,70 @@ function executeMultiMove(tWh, targetNo, anchorWh = null, anchorNo = null) {
         }
     }
 
-    function endCustomDrag(e, sWh, sNo) {
-        customDragging = false;
-        if (cloneEl) { cloneEl.remove(); cloneEl = null; }
-        if (cloneGroupContainer) { cloneGroupContainer.remove(); cloneGroupContainer = null; } // ▼クローングループをクリーンアップ
-        
-        const touch = e.changedTouches[0];
-        const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
-        document.querySelectorAll('.pallet').forEach(p => {
-            p.classList.remove('drag-over');
-            p.style.opacity = ''; 
-        });
+   function endCustomDrag(e, sWh, sNo) {
+    customDragging = false;
+    if (cloneEl) { cloneEl.remove(); cloneEl = null; }
+    if (cloneGroupContainer) { cloneGroupContainer.remove(); cloneGroupContainer = null; } 
+    
+    const touch = e.changedTouches[0];
+    const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+    document.querySelectorAll('.pallet').forEach(p => {
+        p.classList.remove('drag-over');
+        p.style.opacity = ''; 
+    });
 
-        if (elemBelow) {
-            const dropTarget = elemBelow.closest('.pallet');
-            if (dropTarget) {
-                const dWh = dropTarget.getAttribute('data-wh');
-                const dNo = parseInt(dropTarget.getAttribute('data-no'));
-                if (dWh && !Number.isNaN(dNo) && !(dWh === sWh && dNo === sNo)) {
-                    if (typeof isMultiSelectMode !== 'undefined' && isMultiSelectMode && selectedPallets.length > 0) {
-                        const draggingSelected = selectedPallets.some(p => p.wh === sWh && p.no == sNo);
-                        if (draggingSelected) {
-                            const destOccupied = stockDetails.some(x => x.wh === dWh && x.no == dNo);
-                            if (!destOccupied) {
-                                // ▼変更：受け取った draggedAnchorWh, draggedAnchorNo を関数に渡す▼
-                                executeMultiMove(dWh, dNo, draggedAnchorWh, draggedAnchorNo);
-                                return;
-                            }
-                        }
+    if (elemBelow) {
+        const dropTarget = elemBelow.closest('.pallet');
+        if (dropTarget) {
+            const dWh = dropTarget.getAttribute('data-wh');
+            const dNo = parseInt(dropTarget.getAttribute('data-no'));
+            if (dWh && !Number.isNaN(dNo) && !(dWh === sWh && dNo === sNo)) {
+                
+                // ▼ここから修正箇所
+                if (typeof isMultiSelectMode !== 'undefined' && isMultiSelectMode && selectedPallets.length > 0) {
+                    const draggingSelected = selectedPallets.some(p => p.wh === sWh && p.no == sNo);
+                    if (draggingSelected) {
+                        // ドロップ先が空かどうか(destOccupied)のチェックを削除しました。
+                        // エラー判定はすべて executeMultiMove に任せて、すぐに呼び出します。
+                        executeMultiMove(dWh, dNo, draggedAnchorWh, draggedAnchorNo);
+                        return;
                     }
-                    executeDragAndDropMove(sWh, sNo, dWh, dNo);
                 }
+                // ▲ここまで
+                
+                executeDragAndDropMove(sWh, sNo, dWh, dNo, true);
             }
         }
     }
+}
 
-    function executeDragAndDropMove(sWh, sNo, dWh, dNo) {
+    function executeDragAndDropMove(sWh, sNo, dWh, dNo, isMultiMove = false) {
         const sIdx = stockDetails.findIndex(x => x.wh === sWh && x.no === sNo);
         if (sIdx === -1) return; 
         const dIdx = stockDetails.findIndex(x => x.wh === dWh && x.no === dNo);
         
         if (dIdx > -1) {
+            // ▼ ここから分岐を追加
+        if (isMultiMove) {
+            // 複数選択時はバナーを出さず、即座に入替処理を実行する
+            stockDetails[dIdx].wh = sWh;
+            stockDetails[dIdx].no = sNo;
+            
+            stockDetails[sIdx].wh = dWh;
+            stockDetails[sIdx].no = dNo;
+            
+            localStorage.setItem('wh_v15_data', JSON.stringify(stockDetails));
+            currentWh = dWh; 
+            currentSelectedNo = dNo; 
+            renderMap();
+        } else {
+            // 通常の1パレット移動時はこれまで通りバナーを出す
             isMovingMode = true; movingSource = { wh: sWh, no: sNo }; movingTarget = { wh: dWh, no: dNo };
             document.getElementById('moveModeBanner').style.display = 'flex';
             document.getElementById('moveModeBanner').innerHTML = `もう一度タップで入替確定 <button onclick="cancelMoveMode()">キャンセル</button>`;
             renderMap();
+        }
+        // ▲ 分岐ここまで
         } else {
             stockDetails[sIdx].wh = dWh; stockDetails[sIdx].no = dNo;
             localStorage.setItem('wh_v15_data', JSON.stringify(stockDetails));
