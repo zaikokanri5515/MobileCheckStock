@@ -215,7 +215,9 @@
         <label><input type="radio" name="searchMode" value="出荷待ち" checked="" onchange="runSearch()"> 出荷待ち</label>
         <label><input type="radio" name="searchMode" value="廃棄品" onchange="runSearch()"> 廃棄品一覧</label>
     </div>
-    <input type="text" id="searchInput" style="width:100%; padding:8px; box-sizing:border-box; border:1px solid #ddd; border-radius:4px; font-size:14px; margin-bottom:5px;" placeholder="アイテム名でフィルタ..." oninput="runSearch()">
+    <select id="searchInput" style="width:100%; padding:8px; box-sizing:border-box; border:1px solid #ddd; border-radius:4px; font-size:14px; margin-bottom:5px; background:white;" onchange="runSearch()">
+        <option value="">全てのアイテム</option>
+    </select>
     <div id="searchResults"></div>
 </div>
 
@@ -751,11 +753,23 @@ function showCustomAlert(message) {
                 headerRow.appendChild(titleText); headerRow.appendChild(backBtn); wrapper.appendChild(headerRow);
             }
 
+            // ▼ ここから書き換え ▼
             const grid = document.createElement('div');
             grid.className = 'map-container';
             grid.style.gridTemplateColumns = `repeat(${whDef.w}, var(--cell-size))`;
             grid.style.gridTemplateRows = `repeat(${whDef.d}, var(--cell-size))`;
 
+            // 1. パレット配置エリアの領域をピッタリ固定する（マス目の数 × マスのサイズ ＋ 隙間）
+            grid.style.width = `calc((var(--cell-size) * ${whDef.w}) + (var(--gap-size) * ${whDef.w - 1}))`;
+            grid.style.height = `calc((var(--cell-size) * ${whDef.d}) + (var(--gap-size) * ${whDef.d - 1}))`;
+            
+            // 2. 配置領域からはみ出すものを非表示（隠す）
+            grid.style.overflow = 'hidden';
+            
+            // （おまけ）倉庫の「外枠」を線ではっきりと見せる（不要なら消してOKです）
+            grid.style.border = '2px solid #bdc3c7';
+            grid.style.borderRadius = '4px';
+            // ▲ ここまで書き換え ▲
             const totalPallets = whDef.w * whDef.d;
             for (let i = 1; i <= totalPallets; i++) {
                 const d = stockDetails.find(x => x.wh === whDef.name && x.no == i);
@@ -765,15 +779,25 @@ function showCustomAlert(message) {
                 
                 div.draggable = false; 
 
+                // ▼ 修正後（1000 で割っていた部分を 1200 に変更）
                 if (d && d.size) {
-                    let sDef = parsedPalletSizes.find(s => s.name === d.size) || {w:1000, h:1000};
-                    let wRatio = sDef.w / 1000; let hRatio = sDef.h / 1000;
-                    if (d.dir === 'v') { let tmp = wRatio; wRatio = hRatio; hRatio = tmp; }
-                    if (wRatio !== 1) div.style.width = `calc(${wRatio * 100}% + ${(wRatio-1)} * var(--gap-size, 2px))`;
-                    if (hRatio !== 1) div.style.height = `calc(${hRatio * 100}% + ${(hRatio-1)} * var(--gap-size, 2px))`;
-                    if (wRatio !== 1 || hRatio !== 1) div.style.zIndex = '15';
-                }
-
+    let sDef = parsedPalletSizes.find(s => s.name === d.size) || {w:1000, h:1000};
+    
+    // 基準のタイルサイズを1200に設定
+    const baseTileSize = 1200; 
+    let wRatio = sDef.w / baseTileSize; 
+    let hRatio = sDef.h / baseTileSize;
+    
+    if (d.dir === 'v') { let tmp = wRatio; wRatio = hRatio; hRatio = tmp; }
+    
+    // ↓ここは元のコードのままでOKです
+    if (wRatio !== 1) div.style.width = `calc(${wRatio * 100}% + ${(wRatio-1)} * var(--gap-size, 2px))`;
+    if (hRatio !== 1) div.style.height = `calc(${hRatio * 100}% + ${(hRatio-1)} * var(--gap-size, 2px))`;
+    if (wRatio !== 1 || hRatio !== 1) div.style.zIndex = '15';
+    
+    // ▼ おまけ：マス目の中でパレットを中央に配置して見栄えを良くする
+    div.style.margin = 'auto'; 
+}
                 let isMatch = false; let isOldestTarget = false;
                 const hasData = (d && d.items && d.items.length > 0);
 
@@ -1557,24 +1581,31 @@ function showCustomAlert(message) {
     }
 
     function runSearch() {
-        const q = document.getElementById('searchInput').value.toLowerCase(); const mode = document.querySelector('input[name="searchMode"]:checked').value;
-        const res = document.getElementById('searchResults'); res.innerHTML = "";
-        const groups = {}; stockDetails.forEach(d => d.items.forEach(it => {
-            if(it.status === mode && (it.name.toLowerCase().includes(q) || !q)){
-                if(!groups[it.name]) groups[it.name] = {total:0, list:[]}; groups[it.name].total += it.qty; groups[it.name].list.push({wh:d.wh, no:d.no, ...it});
-            }
-        }));
-        for (const [name, g] of Object.entries(groups)) {
-            let h = `<div class="search-item-header"><span>${name}</span><span style="color:var(--active);">計 ${g.total}c/s</span></div>`;
-            g.list.sort((a,b)=>new Date(a.date)-new Date(b.date)).forEach(i => { 
-                const d = getDiffDays(i.date);
-                h += `<div class="search-row" style="${d>=7?'color:var(--alert);font-weight:bold;':'color:#555;font-weight:bold;'}">
-                    <span>${i.wh}</span> <span>No.${i.no}</span> <span>生産日 ${i.date?`${new Date(i.date).getMonth()+1}/${new Date(i.date).getDate()}`:'--'}</span> <span>${d}日経過</span> <span style="text-align:right;">${i.qty}c/s</span>
-                </div>`;
-            });
-            res.insertAdjacentHTML('beforeend', h);
+    const q = document.getElementById('searchInput').value; // ドロップダウンの選択値を取得
+    const mode = document.querySelector('input[name="searchMode"]:checked').value;
+    const res = document.getElementById('searchResults'); res.innerHTML = "";
+    
+    const groups = {}; 
+    stockDetails.forEach(d => d.items.forEach(it => {
+        // qが空（全てのアイテム）か、アイテム名がピッタリ一致する場合のみ集計
+        if(it.status === mode && (!q || it.name === q)){
+            if(!groups[it.name]) groups[it.name] = {total:0, list:[]}; 
+            groups[it.name].total += parseInt(it.qty) || 0; 
+            groups[it.name].list.push({wh:d.wh, no:d.no, ...it});
         }
+    }));
+    
+    for (const [name, g] of Object.entries(groups)) {
+        let h = `<div class="search-item-header"><span>${name}</span><span style="color:var(--active);">計 ${g.total}c/s</span></div>`;
+        g.list.sort((a,b)=>new Date(a.date)-new Date(b.date)).forEach(i => { 
+            const d = getDiffDays(i.date);
+            h += `<div class="search-row" style="${d>=7?'color:var(--alert);font-weight:bold;':'color:#555;font-weight:bold;'}">
+                <span>${i.wh}</span> <span>No.${i.no}</span> <span>生産日 ${i.date?`${new Date(i.date).getMonth()+1}/${new Date(i.date).getDate()}`:'--'}</span> <span>${d}日経過</span> <span style="text-align:right;">${i.qty}c/s</span>
+            </div>`;
+        });
+        res.insertAdjacentHTML('beforeend', h);
     }
+}
 
     function updateMasters() { 
         masters.wh = document.getElementById('whMaster').value; 
@@ -1591,6 +1622,17 @@ function showCustomAlert(message) {
         const val = filter.value; filter.innerHTML = '<option value="all">全て表示</option>';
         (masters.item||"").split('\n').filter(v=>v.trim()).forEach(i => { filter.insertAdjacentHTML('beforeend', `<option value="${i}">${i}</option>`); });
         if([...filter.options].some(o=>o.value===val)) filter.value = val;
+        // ▼▼ ここから追加（検索パネルのドロップダウンも更新する） ▼▼
+        const searchSelect = document.getElementById('searchInput');
+        if (searchSelect) {
+            const searchVal = searchSelect.value;
+            searchSelect.innerHTML = '<option value="">全てのアイテム</option>';
+            (masters.item||"").split('\n').filter(v=>v.trim()).forEach(i => { 
+                searchSelect.insertAdjacentHTML('beforeend', `<option value="${i}">${i}</option>`); 
+            });
+            if([...searchSelect.options].some(o=>o.value===searchVal)) searchSelect.value = searchVal;
+        }
+        // ▲▲ ここまで追加 ▲▲
 
         if(!currentWh || !whDefs.some(w => w.name === currentWh)) currentWh = whDefs[0].name;
 
@@ -1673,7 +1715,7 @@ function showCustomAlert(message) {
         const r = new FileReader(); r.onload=(e)=>{ 
             try { 
                 masters=JSON.parse(e.target.result); 
-                document.getElementById('whMaster').value=masters.wh || "倉庫1,20,12"; 
+                document.getElementById('whMaster').value=masters.wh || "倉庫1,25,15"; 
                 document.getElementById('palletMaster').value=masters.palletSize || "1x1,1000,1000\n1x2,1200,1000"; 
                 document.getElementById('itemMaster').value=masters.item || ""; 
                 updateMasters(); 
