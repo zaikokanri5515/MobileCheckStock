@@ -25,7 +25,7 @@
         .dropdown-item:last-child { border-bottom: none; }
         .dropdown-item:hover { background: #f8f9fa; color: var(--primary); }
 
-        .map-section { flex: 1; container-type: size; display: flex; background: var(--map-bg); position: relative; outline: none; overflow: auto; }
+        .map-section { flex: 1; container-type: size; display: flex; background: var(--map-bg); position: relative; outline: none; overflow: hidden; }
         
         .map-container { display: grid; gap: var(--gap-size, 2px); width: max-content; }
         
@@ -174,7 +174,7 @@
     <div class="header-btns">
         <button id="modeToggleBtn" class="btn" style="background: #2980b9; width: 60px;" onclick="toggleMode()">閲覧</button>
         <button id="fullscreenBtn" class="btn" style="background:var(--active);" onclick="toggleFullScreen()">全画面表示</button>
-        <select id="mapFilter" class="btn" style="background:#fff; color:#333; border: 1px solid #ccc; padding: 6px 8px; outline: none; max-width: 150px; text-overflow: ellipsis;"onchange="handleFilterChange()"><option value="all">全て表示</option><option value="180g24入(長野)">180g24入(長野)</option><option value="180g24入(新潟)">180g24入(新潟)</option><option value="90g30入(長野)">90g30入(長野)</option><option value="90g30入(新潟)">90g30入(新潟)</option><option value="ｲﾌｺｺﾝﾃﾅ 90g60入">ｲﾌｺｺﾝﾃﾅ 90g60入</option><option value="ｲﾌｺｺﾝﾃﾅ 180g36入">ｲﾌｺｺﾝﾃﾅ 180g36入</option><option value="ｲﾌｺｺﾝﾃﾅ 500g15入">ｲﾌｺｺﾝﾃﾅ 500g15入</option><option value="300g20入">300g20入</option><option value="Q300g15入">Q300g15入</option></select>
+        <select id="mapFilter" class="btn" style="background:#fff; color:#333; border: 1px solid #ccc; padding: 6px 8px; outline: none; max-width: 150px; text-overflow: ellipsis;"onchange="handleFilterChange()"><option value="all">全て表示</option></select>
         <button class="btn" style="background:var(--success);" onclick="toggleSearchPanel(event)">集計・検索</button>
         <div class="dropdown">
             <button class="btn dropdown-toggle" style="background:var(--gray);" onclick="toggleDropdown(event)">管理メニュー ▼</button>
@@ -558,9 +558,9 @@ function showCustomAlert(message) {
     overlay.style.alignItems = 'center';
     overlay.style.zIndex = '10000'; // 一番手前に表示
 
-    // 白いダイアログ本体
+    // ダイアログ本体
     const modal = document.createElement('div');
-    modal.style.backgroundColor = '#bc60c3';
+    modal.style.backgroundColor = '#bc60c3';// 選択モードバナーと同じ紫色'#bc60c3'
     modal.style.padding = '20px';
     modal.style.borderRadius = '8px';
     modal.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
@@ -579,8 +579,8 @@ function showCustomAlert(message) {
     const btn = document.createElement('button');
     btn.innerText = 'OK';
     btn.style.padding = '10px 30px';
-    btn.style.backgroundColor = 'white'; // 警告っぽいオレンジ色'#e67e22'
-    btn.style.color = '#e67e22';
+    btn.style.backgroundColor = 'white';
+    btn.style.color = '#e67e22'; // 警告っぽいオレンジ色'#e67e22'
     btn.style.fontWeight = 'bold';
     btn.style.border = 'none';
     btn.style.borderRadius = '4px';
@@ -718,7 +718,7 @@ function showCustomAlert(message) {
             mapSec.style.setProperty('--gap-size', '1px'); 
             mapSec.style.flexDirection = 'row'; mapSec.style.flexWrap = 'wrap'; mapSec.style.justifyContent = 'center'; mapSec.style.alignContent = 'center'; mapSec.style.padding = '5px'; mapSec.style.gap = '10px';
         } else {
-            const activeWh = currentWhList[0] || {w:20, d:12};
+            const activeWh = currentWhList[0] || {w:25, d:15};
             
             // ▼変更：パレット間の隙間（2px）の合計幅を計算して、画面サイズから引くように修正▼
             const gapTotalW = (activeWh.w - 1) * 2;
