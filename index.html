@@ -2205,7 +2205,24 @@
             }
 
             localStorage.setItem('wh_v15_data', JSON.stringify(stockDetails));
+            // ▼修正箇所：処理の順番と条件分岐の整理▼
+
+            // 1. まず一括登録モードの解除やフォームを閉じる処理を行う
+            if (isBatchRegistering) {
+                // 一括登録の場合は keepOpen に関わらず解除してフォームを閉じる
+                isBatchRegistering = false;
+                cancelMultiMove();
+                hideForm();
+            } else if (!keepOpen) {
+                // 通常の登録で、連続登録(keepOpen)ではない場合のみ閉じる
+                hideForm();
+            }
+
+            // 2. 状態がすべて更新された【最後】にマップを再描画する
             renderMap();
+            
+        } // <- saveData関数の閉じカッコ
+            /*renderMap();
 
             if (!keepOpen) {
                 hideForm();
@@ -2215,7 +2232,7 @@
                     cancelMultiMove();
                 }
             }
-        }
+        }*/
 
         function openItemPicker(inputEl) {
             currentInputTarget = inputEl;
