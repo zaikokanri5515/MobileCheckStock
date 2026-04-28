@@ -847,7 +847,7 @@
     <div id="multiMoveBanner" class="move-banner" style="background: #bc60c3; z-index: 4000;">
         <span id="multiMoveText">0件選択中: 先頭の移動先をタップ</span>
         <div style="display: flex; gap: 8px;">
-            <button onclick="batchDeletePallets()">一括削除</button>
+            <button onclick="batchDeletePallets(this)">一括削除</button>
             <button onclick="cancelMultiMove()">キャンセル</button>
             <button onclick="batchRegisterPallets()">一括登録</button>
         </div>
@@ -1103,25 +1103,46 @@
             renderMap();
         }
 
-        // ▼一括削除関数▼
-        function batchDeletePallets() {
-            if (selectedPallets.length === 0) {
-                alert('削除するパレットが選択されていません');
-                return;
-            }
+ function batchDeletePallets(btn) {
+    if (selectedPallets.length === 0) {
+        btn.innerText = '未選択';
+        setTimeout(() => btn.innerText = '一括削除', 2000);
+        return;
+    }
 
-            if (confirm(`${selectedPallets.length}件のパレットを削除してもよろしいですか？`)) {
-                selectedPallets.forEach(pal => {
-                    const idx = stockDetails.findIndex(x => x.wh === pal.wh && x.no === pal.no);
-                    if (idx > -1) {
-                        stockDetails.splice(idx, 1);
-                    }
-                });
-                localStorage.setItem('wh_v15_data', JSON.stringify(stockDetails));
-                cancelMultiMove();
-            }
-        }
+    // 1回目のクリック
+    if (btn.innerText === "一括削除") {
+        btn.innerText = "本当に削除？";
+        btn.style.backgroundColor = "#ff4444"; // 警告色
+        btn.style.color = "white";
 
+        // 3秒後に戻す
+        setTimeout(() => {
+            btn.innerText = "一括削除";
+            btn.style.backgroundColor = "";
+            btn.style.color = "";
+        }, 3000);
+        return;
+    }
+
+    // 2回目のクリック（実行）
+    if (btn.innerText === "本当に削除？") {
+        // 削除実行
+        selectedPallets.forEach(pal => {
+            const idx = stockDetails.findIndex(x => x.wh === pal.wh && x.no === pal.no);
+            if (idx > -1) stockDetails.splice(idx, 1);
+        });
+
+        localStorage.setItem('wh_v15_data', JSON.stringify(stockDetails));
+        
+        // 削除が終わったらバナーごと閉じる
+        cancelMultiMove(); 
+        
+        // ボタンの状態をリセット（次に開いた時のため）
+        btn.innerText = "一括削除";
+        btn.style.backgroundColor = "";
+    }
+}
         // ▼一括登録関数▼
         function batchRegisterPallets() {
             if (selectedPallets.length === 0) {
