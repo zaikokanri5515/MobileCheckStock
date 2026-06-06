@@ -1103,46 +1103,46 @@
             renderMap();
         }
 
- function batchDeletePallets(btn) {
-    if (selectedPallets.length === 0) {
-        btn.innerText = '未選択';
-        setTimeout(() => btn.innerText = '一括削除', 2000);
-        return;
-    }
+        function batchDeletePallets(btn) {
+            if (selectedPallets.length === 0) {
+                btn.innerText = '未選択';
+                setTimeout(() => btn.innerText = '一括削除', 2000);
+                return;
+            }
 
-    // 1回目のクリック
-    if (btn.innerText === "一括削除") {
-        btn.innerText = "本当に削除？";
-        btn.style.backgroundColor = "#ff4444"; // 警告色
-        btn.style.color = "white";
+            // 1回目のクリック
+            if (btn.innerText === "一括削除") {
+                btn.innerText = "本当に削除？";
+                btn.style.backgroundColor = "#ff4444"; // 警告色
+                btn.style.color = "white";
 
-        // 3秒後に戻す
-        setTimeout(() => {
-            btn.innerText = "一括削除";
-            btn.style.backgroundColor = "";
-            btn.style.color = "";
-        }, 3000);
-        return;
-    }
+                // 3秒後に戻す
+                setTimeout(() => {
+                    btn.innerText = "一括削除";
+                    btn.style.backgroundColor = "";
+                    btn.style.color = "";
+                }, 3000);
+                return;
+            }
 
-    // 2回目のクリック（実行）
-    if (btn.innerText === "本当に削除？") {
-        // 削除実行
-        selectedPallets.forEach(pal => {
-            const idx = stockDetails.findIndex(x => x.wh === pal.wh && x.no === pal.no);
-            if (idx > -1) stockDetails.splice(idx, 1);
-        });
+            // 2回目のクリック（実行）
+            if (btn.innerText === "本当に削除？") {
+                // 削除実行
+                selectedPallets.forEach(pal => {
+                    const idx = stockDetails.findIndex(x => x.wh === pal.wh && x.no === pal.no);
+                    if (idx > -1) stockDetails.splice(idx, 1);
+                });
 
-        localStorage.setItem('wh_v15_data', JSON.stringify(stockDetails));
-        
-        // 削除が終わったらバナーごと閉じる
-        cancelMultiMove(); 
-        
-        // ボタンの状態をリセット（次に開いた時のため）
-        btn.innerText = "一括削除";
-        btn.style.backgroundColor = "";
-    }
-}
+                localStorage.setItem('wh_v15_data', JSON.stringify(stockDetails));
+
+                // 削除が終わったらバナーごと閉じる
+                cancelMultiMove();
+
+                // ボタンの状態をリセット（次に開いた時のため）
+                btn.innerText = "一括削除";
+                btn.style.backgroundColor = "";
+            }
+        }
         // ▼一括登録関数▼
         function batchRegisterPallets() {
             if (selectedPallets.length === 0) {
@@ -2241,19 +2241,19 @@
 
             // 2. 状態がすべて更新された【最後】にマップを再描画する
             renderMap();
-            
-        } // <- saveData関数の閉じカッコ
-            /*renderMap();
 
-            if (!keepOpen) {
-                hideForm();
-                // 一括登録完了後にモードを解除
-                if (isBatchRegistering) {
-                    isBatchRegistering = false;
-                    cancelMultiMove();
-                }
+        } // <- saveData関数の閉じカッコ
+        /*renderMap();
+
+        if (!keepOpen) {
+            hideForm();
+            // 一括登録完了後にモードを解除
+            if (isBatchRegistering) {
+                isBatchRegistering = false;
+                cancelMultiMove();
             }
-        }*/
+        }
+    }*/
 
         function openItemPicker(inputEl) {
             currentInputTarget = inputEl;
@@ -2591,37 +2591,43 @@
             const f = input.files[0]; if (!f) return;
             const match = f.name.match(/^(\d{8})/);
             if (match) { const d = match[1]; changeSysDate(`${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`); }
-            const r = new FileReader(); r.onload = (e) => {
-                const rs = e.target.result.split('\n').slice(1); stockDetails = [];
 
-                // ① CSV内の倉庫名を収集するための準備
+            const r = new FileReader();
+            r.onload = (e) => {
+                const rs = e.target.result.split('\n').slice(1); stockDetails = [];
                 let csvWhNames = new Set();
 
                 rs.forEach(row => {
-                    const c = row.split(','); if (c.length < 7) return;
+                    const c = row.split(',');
+                    if (c.length < 8) return; // 列数チェックを7から8に変更
+
                     const whName = c[0].trim();
-                    csvWhNames.add(whName); // 読み込んだデータから倉庫名を記録
+                    csvWhNames.add(whName);
 
                     let p = stockDetails.find(d => d.wh === whName && d.no == c[1]);
-                    if (!p) { p = { wh: whName, no: parseInt(c[1]), size: c[2], dir: 'h', items: [] }; stockDetails.push(p); }
-                    let status = (c[3] === '有効在庫') ? '出荷待ち' : c[3];
-                    p.items.push({ status: status, name: c[4], date: c[5], qty: parseInt(c[6]) });
+
+                    if (!p) {
+                        // c[3]をパレットの「向き」として読み込む
+                        p = { wh: whName, no: parseInt(c[1]), size: c[2], dir: c[3], items: [] };
+                        stockDetails.push(p);
+                    }
+
+                    // 項目が1列ずれたため、ステータスはc[4]、アイテム名はc[5]...となります
+                    let status = (c[4] === '有効在庫') ? '出荷待ち' : c[4];
+                    p.items.push({ status: status, name: c[5], date: c[6], qty: parseInt(c[7]) });
                 });
 
-                // ② 現在のマスター設定に存在しない倉庫があれば 25x15 で自動追加
                 let masterUpdated = false;
                 let currentWhText = document.getElementById('whMaster').value;
                 let existingWhs = whDefs.map(w => w.name);
 
                 csvWhNames.forEach(whName => {
                     if (!existingWhs.includes(whName)) {
-                        // リストの最後に「倉庫名,25,15」を追記
                         currentWhText += (currentWhText ? '\n' : '') + `${whName},25,15`;
                         masterUpdated = true;
                     }
                 });
 
-                // マスター設定に変更があった場合、テキストエリアに反映して設定を再読込
                 if (masterUpdated) {
                     document.getElementById('whMaster').value = currentWhText.trim();
                     updateMasters();
@@ -2630,60 +2636,27 @@
                 localStorage.setItem('wh_v15_data', JSON.stringify(stockDetails));
                 renderMap();
                 document.getElementById('adminDropdown').classList.remove('show');
-            }; r.readAsText(f); input.value = '';
-        } function importCSV(input) {
-            const f = input.files[0]; if (!f) return;
-            const match = f.name.match(/^(\d{8})/);
-            if (match) { const d = match[1]; changeSysDate(`${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`); }
-            const r = new FileReader(); r.onload = (e) => {
-                const rs = e.target.result.split('\n').slice(1); stockDetails = [];
-
-                // ① CSV内の倉庫名を収集するための準備
-                let csvWhNames = new Set();
-
-                rs.forEach(row => {
-                    const c = row.split(','); if (c.length < 7) return;
-                    const whName = c[0].trim();
-                    csvWhNames.add(whName); // 読み込んだデータから倉庫名を記録
-
-                    let p = stockDetails.find(d => d.wh === whName && d.no == c[1]);
-                    if (!p) { p = { wh: whName, no: parseInt(c[1]), size: c[2], dir: 'h', items: [] }; stockDetails.push(p); }
-                    let status = (c[3] === '有効在庫') ? '出荷待ち' : c[3];
-                    p.items.push({ status: status, name: c[4], date: c[5], qty: parseInt(c[6]) });
-                });
-
-                // ② 現在のマスター設定に存在しない倉庫があれば 25x15 で自動追加
-                let masterUpdated = false;
-                let currentWhText = document.getElementById('whMaster').value;
-                let existingWhs = whDefs.map(w => w.name);
-
-                csvWhNames.forEach(whName => {
-                    if (!existingWhs.includes(whName)) {
-                        // リストの最後に「倉庫名,25,15」を追記
-                        currentWhText += (currentWhText ? '\n' : '') + `${whName},25,15`;
-                        masterUpdated = true;
-                    }
-                });
-
-                // マスター設定に変更があった場合、テキストエリアに反映して設定を再読込
-                if (masterUpdated) {
-                    document.getElementById('whMaster').value = currentWhText.trim();
-                    updateMasters();
-                }
-
-                localStorage.setItem('wh_v15_data', JSON.stringify(stockDetails));
-                renderMap();
-                document.getElementById('adminDropdown').classList.remove('show');
-            }; r.readAsText(f); input.value = '';
+            };
+            r.readAsText(f);
+            input.value = '';
         }
 
         function exportCSV() {
-            let csv = "倉庫名,パレットNo,規格,区分,アイテム名,生産日,数量\n";
-            stockDetails.forEach(d => d.items.forEach(it => csv += `${d.wh},${d.no},${d.size},${it.status},${it.name},${it.date},${it.qty}\n`));
-            const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: 'text/csv' }));
-            a.download = `${getExportDateStr(referenceDate)}-在庫データ.csv`; a.click();
+            // ヘッダーに「向き」を追加
+            let csv = "倉庫名,パレットNo,規格,向き,区分,アイテム名,生産日,数量\n";
+
+            // d.dir（パレットの向き）を追加して出力
+            stockDetails.forEach(d => d.items.forEach(it =>
+                csv += `${d.wh},${d.no},${d.size},${d.dir},${it.status},${it.name},${it.date},${it.qty}\n`
+            ));
+
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: 'text/csv' }));
+            a.download = `${getExportDateStr(referenceDate)}-在庫データ.csv`;
+            a.click();
             document.getElementById('adminDropdown').classList.remove('show');
         }
+
 
         function handleKeydown(e) {
             if (e.key === 'Escape') { if (isMovingMode) cancelMoveMode(); if (document.getElementById('formOverlay').style.display === 'flex') hideForm(); return; }
@@ -2725,10 +2698,10 @@
             // 設定パネルを開いた時に値を表示させるための処理
             const alertEl = document.getElementById('alertDaysMaster');
             if (alertEl) alertEl.value = masters.alertConfig || "7, 14";
-        
-        initSysDate(); updateMasters();
 
-        initHistoryState();
+            initSysDate(); updateMasters();
+
+            initHistoryState();
         };
     </script>
 
