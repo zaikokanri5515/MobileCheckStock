@@ -375,6 +375,42 @@
             margin-right: 10px;
         }
 
+        /* ▼▼▼ 下合わせ用のスタイル この部分を追加 ▼▼▼ */
+        .pallet-tooltip.bottom-align {
+            top: auto;
+            bottom: 0; /* 基準を上端から下端に変更して上へ伸ばす */
+        }
+        /* ▲▲▲ ここまで追加 ▲▲▲ */
+
+        /* ▼▼▼ 吹き出しの尻尾（ポインター）を作るCSS ▼▼▼ */
+        
+        /* 1. デフォルト（右側表示・上合わせ）の尻尾 */
+        .pallet-tooltip::after {
+            content: "";
+            position: absolute;
+            top: 12px;            /* パレットの中心高さに合わせる調整値 */
+            left: -16px;          /* ツールチップの左外側にはみ出させる border-widthの2倍のマイナス値 */
+            border-width: 8px;    /* 希望の尻尾の長さ */
+            border-style: solid;
+            /* 左向きの三角形（背景色と同じ色を指定） */
+            border-color: transparent rgba(44, 62, 80, 0.98) transparent transparent;
+        }
+
+        /* 2. 左側に表示されるときの尻尾 */
+        .pallet-tooltip.left-side::after {
+            left: auto;
+            right: -16px;         /* ツールチップの右外側にはみ出させる border-widthの2倍のマイナス値 */
+            /* 右向きの三角形 */
+            border-color: transparent transparent transparent rgba(44, 62, 80, 0.98);
+        }
+
+        /* 3. 下合わせ（下半分）に表示されるときの尻尾 */
+        .pallet-tooltip.bottom-align::after {
+            top: auto;
+            bottom: 12px;         /* 尻尾の縦位置も下基準に移動させる */
+        }
+        /* ▲▲▲ ここまで追加 ▲▲▲ */
+
         .side-panel {
             position: fixed;
             top: 0;
@@ -1691,9 +1727,23 @@
                                 </div>`;
                                 });
 
-                                const isRightEnd = (i % whDef.w === 0 || i % whDef.w > whDef.w - 3);
+                                // 中央判定ロジックへの置き換え
                                 div.insertAdjacentHTML('beforeend', tt + `</div>`);
-                                if (isRightEnd) div.querySelector('.pallet-tooltip').classList.add('left-side');
+                                const tooltipEl = div.querySelector('.pallet-tooltip');
+                                
+                                if (tooltipEl) {
+                                    // ① 左右の中央判定：列番号が全体の幅の半分より右側か
+                                    const colNum = ((i - 1) % whDef.w) + 1;
+                                    if (colNum > whDef.w / 2) {
+                                        tooltipEl.classList.add('left-side');
+                                    }
+                                    
+                                    // ② 上下の中央判定：行番号が全体の奥行の半分より下側か
+                                    const rowNum = Math.floor((i - 1) / whDef.w) + 1;
+                                    if (rowNum > whDef.d / 2) {
+                                        tooltipEl.classList.add('bottom-align');
+                                    }
+                                }
                             }
                         }
 
