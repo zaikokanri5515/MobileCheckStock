@@ -1868,13 +1868,41 @@
                             return;
                         }
 
-                        // 6. 閲覧モードの場合は何もしない
-                        if (typeof isViewMode !== 'undefined' && isViewMode) return;
+                        // --- ▼ここから修正：閲覧/入力モードに応じたツールチップ・フォーム表示制御▼ ---
+                        const hasTooltip = div.querySelector('.pallet-tooltip') !== null;
+                        const isActive = div.classList.contains('show-tooltip');
 
-                        // 7. 通常モード（入力フォームを開く）
-                        currentSelectedNo = i;
-                        currentWh = whDef.name;
-                        showForm(i);
+                        // タップされたパレット以外のツールチップをすべて閉じる
+                        document.querySelectorAll('.pallet.show-tooltip').forEach(p => {
+                            if (p !== div) p.classList.remove('show-tooltip');
+                        });
+
+                        if (typeof isViewMode !== 'undefined' && isViewMode) {
+                            // 【閲覧モード】タップでツールチップの表示・非表示を切り替え
+                            if (hasTooltip) {
+                                div.classList.toggle('show-tooltip');
+                            }
+                        } else {
+                            // 【入力モード】
+                            if (hasTooltip) {
+                                if (isActive) {
+                                    // 2回目のタップ（既にツールチップ表示中） -> フォームを開く
+                                    div.classList.remove('show-tooltip'); // 開く前にツールチップを消す
+                                    currentSelectedNo = i;
+                                    currentWh = whDef.name;
+                                    showForm(i);
+                                } else {
+                                    // 1回目のタップ -> ツールチップを表示するだけ
+                                    div.classList.add('show-tooltip');
+                                }
+                            } else {
+                                // データがない（空パレット）場合は、1回目のタップで即座にフォームを開く
+                                currentSelectedNo = i;
+                                currentWh = whDef.name;
+                                showForm(i);
+                            }
+                        }
+                        // --- ▲ここまで修正▲ ---
                     });
 
                     grid.appendChild(div);
